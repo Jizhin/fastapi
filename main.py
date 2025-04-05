@@ -36,4 +36,4 @@ def update_blog(id: int , request: schemas.Blog , db: Session = Depends(get_db))
     blog = db.query(models.Blog).filter(models.Blog.id == id)
     blog.update(request)
     db.commit()
-    return "updated1"
+    return "updated12"
