@@ -1,43 +1,39 @@
-from fastapi import FastAPI
-from typing import Optional
-from pydantic import BaseModel
+from fastapi import FastAPI , Depends
+from database import engine
+import models
+import schemas
+from sqlalchemy.orm import Session
+from database import get_db
 
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 
-@app.get('/blog')
-def index(limit=10, published: bool = True, sort: Optional[str] = None):
-    # only get 10 published blogs
-    if published:
-        return {'data': f'{limit} published blogs from the db'}
-    else:
-        return {'data': f'{limit} blogs from the db'}
+@app.post("/blogs")
+def create_blog(request: schemas.Blog , db: Session = Depends(get_db)):
+    new_blog = models.Blog(title=request.title , body=request.body)
+    db.add(new_blog)
+    db.commit()
+    db.refresh(new_blog)
+    return new_blog
 
 
-@app.get('/blog/unpublished')
-def unpublished():
-    return {'data': 'all unpublished blogs'}
+@app.get("/blogs/list")
+def get_all_blogs(db: Session = Depends(get_db)):
+    blogs = db.query(models.Blog).all()
+    return blogs
 
 
-@app.get('/blog/{id}')
-def show(id: int):
-    # fetch blog with id = id
-    return {'data': id}
+@app.get("/blogs/{id}")
+def get_blog(id: int , db: Session = Depends(get_db)):
+    blog = db.query(models.Blog).filter(models.Blog.id == id).first()
+    return blog
 
 
-@app.get('/blog/{id}/comments')
-def comments(id, limit=10):
-    # fetch comments of blog with id = id
-    return {'data': {'1', '2'}}
-
-
-class Blog(BaseModel):
-    title: str
-    body: str
-    published: Optional[bool]
-
-
-@app.post('/blog')
-def create_blog(blog: Blog):
-    return {'data': f"Blog is created with title as {blog.title}"}
+@app.put("/blogs/{id}")
+def update_blog(id: int , request: schemas.Blog , db: Session = Depends(get_db)):
+    blog = db.query(models.Blog).filter(models.Blog.id == id)
+    blog.update(request)
+    db.commit()
+    return "updated"
